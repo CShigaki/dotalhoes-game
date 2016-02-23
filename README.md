@@ -6,4 +6,5 @@
 <br>5 - node game.js
 <br>6 - http://localhost:8005/
 <br>
+<br>Fica um lixo no firefox
 <br>Se lembrar de alguma coisa faltando eu coloco aqui
