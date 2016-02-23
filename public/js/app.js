@@ -240,17 +240,17 @@ StartServer.prototype = {
     var myBackgroundSprite = game.add.sprite(0, 0, myBackgroundBmd);
     myBackgroundSprite.alpha = 0.5;*/
 
-   /* myLamp1 = game.add.illuminated.lamp(800, 416);
+    myLamp1 = game.add.illuminated.lamp(800, 416);
     //myLamp2 = game.add.illuminated.lamp(0, 0);
     var myObj = game.add.illuminated.rectangleObject(50, 50, 200, 200);
     myObjs = [myObj];
     myLamp1.createLighting(myObjs);
     //myLamp2.createLighting(myObjs);
     //var myLamps = [myLamp1, myLamp2];
-    var myLamps = [myLamp1];*/
+    var myLamps = [myLamp1];
 
     //myMask = game.add.illuminated.darkMask(myLamps);
-    //myMask = game.add.illuminated.darkMask(myLamps, '#000000');
+    myMask = game.add.illuminated.darkMask(myLamps, '#000000');
 
     sounds['machine-gun-shot'] = game.add.audio('machine-gun-shot');
     sounds['machine-gun-shot'].volume = 0.05;
@@ -429,16 +429,16 @@ StartServer.prototype = {
           timeSinceLastShot += game.time.elapsedMS;
           holdingShoot = 0;
         }
-        /*myLamp1.x = player.getX();
+        myLamp1.x = player.getX();
         myLamp1.y = player.getY();
-        myLamp1.refresh();*/
+        myLamp1.refresh();
       }
       socket.emit('send players data', { playerID: player.getID() });
       //updateZombies();
       playerHP.text = "HP: " + player.getHP();
       //ammoInfo.text = holdingShoot;
       ammoInfo.text = player.getWeaponClip() + '/' + player.getEquippedWeapon().ammo;
-      //myMask.refresh();
+      myMask.refresh();
     }
   },
   render: function() {
