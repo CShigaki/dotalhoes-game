@@ -1,4 +1,4 @@
-var util = require("util");         // Utility resources (logging, object inspection, etc)
+var util = require("util");
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app)
@@ -12,6 +12,7 @@ db = require('mongojs').connect('localhost/mongogame', ['users']),
 app.use(express.static(__dirname + '/public'));
 var io = require('socket.io').listen(server);
 
+// Listen for connections from all ips on port 8005. process.env.port is used on Heroku
 server.listen((process.env.PORT || 8005), "0.0.0.0");
 
 console.log('listening to port ' + (process.env.PORT || 8005));
@@ -56,13 +57,8 @@ function sendRoomsInfo() {
 }
 
 function playerShot(data) {
+  // Sends the event 'new bullet' only to clients connected to the server sent by the client.
   io.to(data.server).emit('new bullet', { mouseX: data.mouseX, mouseY: data.mouseY, speed: data.speed, owner: data.playerName } );
-  //io.emit('new bullet', { mouseX: data.mouseX, mouseY: data.mouseY, speed: data.speed, owner: data.playerName } );
-  //this.broadcast.emit('new bullet', { mouseX: data.mouseX, mouseY: data.mouseY, speed: data.speed, owner: data.playerName });
-  /*for (var i = 0; i < playersOnline.length; i++) {
-    //console.log('Player shot: ' + data.playerName + ' X: ' + data.mouseX + ' Y: ' + data.mouseY);
-    playersOnline[i].socket.emit('new bullet', { mouseX: data.mouseX, mouseY: data.mouseY, speed: data.speed, owner: data.playerName });
-  }*/
 }
 
 function playerSuccesfullyLogged(data) {

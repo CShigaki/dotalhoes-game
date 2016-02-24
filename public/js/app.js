@@ -1,37 +1,5 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
- */
-
-/*var Player = require('./Player').Player,
-    db = require('mongojs').connect('localhost/mongogame', ['users']);
-
-// iterate over all whose level is greater than 90. 
-db.users.find({playerName: {$eq: 90}}).forEach(function (err, doc) {
-  if (!doc) {
-    // we visited all docs in the collection 
-    return
-  }
-  // doc is a document in the collection 
-});*/
-
-
+// Connects to the server,
 var socket = io('http://' + window.location.hostname);
-$('#app-container').hide();
 
 /*socket.on('received rooms info', function(data) {
   for (var i = 0; i < data.length; i++) {
@@ -41,30 +9,39 @@ $('#app-container').hide();
 
 socket.emit('rooms info');*/
 
+// If the login failed.
 socket.on('login-failed', function(data) {
+  // Sets the appropriate status message.
   $('#status-message').html(data.status);
 });
 
+// The player logged in succesfully
 socket.on('login checked', function(data) {
   console.log(data.found);
   console.log(data.login);
   console.log(data.id);
+  // Data from the login is stored.
   $.jStorage.set('playerName', data.login);
   $.jStorage.set('server', $('input[name="server"]:checked').val());
   $.jStorage.set('playerID', data.id);
+  // Hides the login form.
   $('.login-form').hide();
+  // And shows the game container.
   $('#app-container').show();
   $('#app-container').css('position', 'relative');
+  // Position the container in the screen.
   $('#app-container').css('left', (window.innerWidth / 2) - (parseInt($('#app-container canvas').css('width')) / 2) + 'px');
 });
 
 $(document).ready(function() {
+  // Hides the div where the game will be rendered.
   $('#app-container').hide();
   $('#login-button').click(function() {
     if ($('input[name="server"]:checked').val() === undefined) {
       alert('You must select a server');
     }
     else {
+      // Sends the login information to the server.
       socket.emit('login_data', {
         'login': $('#login').val(),
         'password': $('#password').val(),
@@ -74,6 +51,7 @@ $(document).ready(function() {
     }
   });
 
+  // The color picker plugin.
   $("#full").spectrum({
     color: "#ECC",
     showInput: true,
@@ -118,36 +96,57 @@ $(document).ready(function() {
   });
 });
 
+// The player variable.
 var player;
-var bulletID = 0;
+// Array with other players.
 var otherPlayers = new Array();
+// All the bullets are stored here.
+var bullets = new Array();
+// Not being used. The array that used to store the zombies
+var zombies = new Array();
+// All the tiles are stored here.
+var tiles = new Array();
+var tileID = 0;
 var canAskAgain = true;
 var bmd;
-var bullets = new Array();
-var zombies = new Array();
+// Groups where all the sprites will be created.
 var bulletsSprites;
 var zombieSprites;
 var worldWalls;
 var playerSprites;
+// If the player is realoading, does not do any other animation.
 var playerReloading = false;
-var statusMessage = "";
-var statusTime = 0;
-//alert($.jStorage.get('playerName'));
-
-var width = screen.width;
-var height = screen.height;
+// Screen size related variables.
 var serveWidth = window.innerWidth;
 var serveHeight = window.innerHeight;
-var screenRatio;
 var realWidth;
 var realHeight;
 var cursors = null;
-var tiles = new Array();
-var tileID = 0;
 var gameWidth;
 var gameHeight;
-var gameTiles;
-var playerMoving = false;
+// How long is the player holding the shoot button.
+var holdingShoot = 0;
+// Prevent precise shots when clicking constantly.
+var timeSinceLastShot = 0;
+// Light related variables.
+var myLamp2;
+var myMask;
+var myLamp1;
+var myObjs;
+// Rate of fire. Controls the speed at which the gun shoots.
+var timeFromLastShot = 0;
+
+// Text variables.
+var statusTime;
+var statusMessage;
+var ammoInfo;
+var playerHP;
+var rotationInfo;
+
+// Sounds array. All the sounds are stored here.
+var sounds = new Array();
+
+// The map.
 var y1 =  [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
@@ -175,27 +174,14 @@ var y1 =  [[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
            [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0],
            [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
-var myLamp1;
-var myObjs;
-var holdingShoot = 0;
-var timeSinceLastShot = 0;
-var myLamp2;
-var myMask;
-var responseTime = 0;
-var playerShot = false;
-var timeFromLastShot = 0;
-var ammoInfo;
-var playerHP;
-var rotationInfo;
-var sounds = new Array();
 
-//GAME STATE
+// Start game state (Needs renaming)
 var StartServer = function(game) {
 }
 
 StartServer.prototype = {
   preload: function() {
-    //game.load.image('player', 'sprites/player-sprite.png');
+    // Loads all the assets.
     game.load.spritesheet('player-machine-gun', 'sprites/player-machine-gun-spritesheet.png', 80, 53, 40);
     game.load.spritesheet('zombie', 'sprites/zombie-spritesheet2.png', 64, 64, 8);
     game.load.spritesheet('blood-splash', 'sprites/dropsplash.png', 43, 56, 6);
@@ -214,13 +200,17 @@ StartServer.prototype = {
     game.load.audio('machine-gun-no-ammo', 'sounds/machine-gun-no-ammo.mp3');
     game.load.audio('run-on-grass', 'sounds/run-on-grass.mp3');
     game.stage.backgroundColor = '#ffff';
+    // Starts the physics system.
     game.physics.startSystem(Phaser.Physics.ARCADE);
   },
   create: function() {
+    // Prevents the game from stopping when the renderer loses focus.
     this.stage.disableVisibilityChange = true;
+    // Adds the light lib.
     game.plugins.add(Phaser.Plugin.PhaserIlluminated);
-    game.forceSingleUpdate = true
+    // Creates the world bounds.
     game.world.setBounds(0, 0, 1600, 1600);
+    // This for will create the tiles.
     for (var y = 0; y < y1.length; y++) {
       for (var x = 0; x < y1[0].length; x++) {
         if (y1[y][x] == 0) {
@@ -233,13 +223,7 @@ StartServer.prototype = {
       }
     }
 
-    /*var myBackgroundBmd = game.add.bitmapData(1600, 1600);
-    myBackgroundBmd.ctx.fillStyle = "#333333";
-    myBackgroundBmd.ctx.fillRect(0, 0, 1600, 1600);
-    game.cache.addBitmapData('background', myBackgroundBmd);
-    var myBackgroundSprite = game.add.sprite(0, 0, myBackgroundBmd);
-    myBackgroundSprite.alpha = 0.5;*/
-
+    // Creates the lamps. See http://www.html5gamedevs.com/topic/17236-phaser-illuminatedjs-interface-library/.
     myLamp1 = game.add.illuminated.lamp(800, 416);
     //myLamp2 = game.add.illuminated.lamp(0, 0);
     var myObj = game.add.illuminated.rectangleObject(50, 50, 200, 200);
@@ -252,6 +236,7 @@ StartServer.prototype = {
     //myMask = game.add.illuminated.darkMask(myLamps);
     myMask = game.add.illuminated.darkMask(myLamps, '#000000');
 
+    // Loads all the audios and set some variables for them
     sounds['machine-gun-shot'] = game.add.audio('machine-gun-shot');
     sounds['machine-gun-shot'].volume = 0.05;
     sounds['machine-gun-shot'].allowMultiple = true;
@@ -263,26 +248,27 @@ StartServer.prototype = {
     sounds['run-on-grass'] = game.add.audio('run-on-grass');
     sounds['run-on-grass'].allowMultiple = false;
 
-    /*bmd = game.add.bitmapData(30, 30);
-    bmd.ctx.beginPath();
-    bmd.ctx.fillStyle = player.getColor();
-    bmd.circle(15, 15, 15);
-    bmd.ctx.fill();
-    player.setSprite(game.add.sprite(0, 0, bmd));*/
+    // Creates the group for the players sprites.
     playerSprites = game.add.physicsGroup();
+    // Sets the player sprite.
     player.setSprite(playerSprites.create(0, 0, 'player-machine-gun'));
+    player.getSprite().anchor.setTo(0.2, 0.5);
+    player.getSprite().body.collideWorldBounds = true;
+    game.physics.enable(player.getSprite(), Phaser.Physics.ARCADE);
+    game.camera.follow(player.getSprite());
+    // And adds the animations.
     player.getSprite().animations.add('run-machine-gun', [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20], 10, true, true);
     player.getSprite().animations.add('idle-machine-gun', [1], 10, true, true);
     var reloadAnimation = player.getSprite().animations.add('reload-machine-gun', [21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39], 10, false, true);
     reloadAnimation.onComplete.add(playerReloadAnimation, this);
-    player.getSprite().anchor.setTo(0.2, 0.5);
-    game.physics.enable(player.getSprite(), Phaser.Physics.ARCADE);
-    player.getSprite().body.collideWorldBounds = true;
-    game.camera.follow(player.getSprite());
+    // Plays the idle animation.
     player.getSprite().animations.play('idle-machine-gun', 5, true);
+    // Adds a machine gun to the player inventory.
     player.getInventory().push({ weapon: 'machine gun', ammo: 150 });
+    // And tells the player to use it.
     player.useWeapon('machine gun');
 
+    // Creates text to be shown in the screen.
     ammoInfo = game.add.text(0, 0, "ammo info", { font: "bold 32px Arial", fill: "#ffffff" });
     ammoInfo.position.set(gameWidth - 100, gameHeight - 35);
     ammoInfo.fixedToCamera = true;
@@ -296,8 +282,8 @@ StartServer.prototype = {
     playerHP.fixedToCamera = true;
     //rotationInfo = game.add.text(0, 50, "x y", { font: "bold 20px Arial", fill: "#ffffff" });
     //rotationInfo.fixedToCamera = true;
-    
 
+    // Creates possible oevents the server can send to the client.
     socket.on('player disconnected', playerDisconnected);
 
     socket.on('player joined', playerJoined);
@@ -306,15 +292,17 @@ StartServer.prototype = {
 
     socket.on('player killed info', playerKilled);
 
-    zombieSprites = game.add.physicsGroup();
+    //zombieSprites = game.add.physicsGroup();
     //socket.on('zombies coordinates', spawnZombies);
 
     socket.emit('succesfully logged', { server: $.jStorage.get('server'), posX: player.getX(), posY: player.getY(), playerName: player.getName(), color: player.getColor(), id: player.getID(), hp: 200 });
 
     socket.on('other players data', otherPlayersData);
 
+    // Creates the bullet and world groups.
     worldWalls = game.add.physicsGroup();
     bulletsSprites = game.add.physicsGroup();
+    // Creates the world walls. The walls are immovable and unaffected by force.
     var wall = worldWalls.create(0, 0,'world-wall-left-right');
     wall.body.immovable = true;
     wall.body.mass = 100;
@@ -327,70 +315,71 @@ StartServer.prototype = {
     wall = worldWalls.create(90, 1595, 'world-wall-up-down');
     wall.body.immovable = true;
     wall.body.mass = 100;
-
-
+    // Used to get input.
     cursors = game.input.keyboard.createCursorKeys();
   },
   update: function() {
+    // Execute the update only if the player hp is gt 0.
     if (player.hp <= 0) {
 
     }
     else {
       statusTime += game.time.elapsed;
       timeFromLastShot += game.time.elapsed;
-      if (playerShot) {
-        responseTime += game.time.elapsed;
-      }
       if (statusTime > 5000) {
+        // This is counter is used to time the 'player x disconnected message'.
         statusMessage.text = "";
         statusTime = 0;
       }
+
       /*myLamp2.refresh();
       myLamp1.y += 0.5;
       myLamp2.x += 0.5;*/
+
+      // Check for collisions.
       game.physics.arcade.collide(bulletsSprites, playerSprites, bulletCollidePlayers, processHandler, this)
       game.physics.arcade.collide(bulletsSprites, worldWalls, bulletCollideWalls, processHandler, this)
       game.physics.arcade.collide(zombieSprites, zombieSprites, zombieCollideZombie, processHandler, this)
       if (cursors != null) {
+        // Zeroes the velocity in the player body.
         player.getSprite().body.velocity.x = 0;
         player.getSprite().body.velocity.y = 0;
-
         var noDirection = true;
-        if (cursors.left.isDown)
-        {
+
+        // Check if the player is pressing left or right.
+        if (cursors.left.isDown) {
           player.getSprite().body.velocity.x = -200;
           player.setPosition(player.getSprite().position.x, player.getSprite().position.y);
           noDirection = false;
-        }
-        else if (cursors.right.isDown)
-        {
+        } else if (cursors.right.isDown) {
           player.getSprite().body.velocity.x = 200;
           player.setPosition(player.getSprite().position.x, player.getSprite().position.y);
           noDirection = false;
         }
 
-        if (cursors.up.isDown)
-        {
+        // Check if the player is pressing up or down.
+        if (cursors.up.isDown) {
           player.getSprite().body.velocity.y = -200;
           player.setPosition(player.getSprite().position.x, player.getSprite().position.y);
           noDirection = false;
-        }
-        else if (cursors.down.isDown)
-        {
+        } else if (cursors.down.isDown) {
           player.getSprite().body.velocity.y = 200;
           player.setPosition(player.getSprite().position.x, player.getSprite().position.y);
           noDirection = false;
         }
 
+        // If the player is not moving
         if (noDirection) {
           if (!playerReloading)
             player.getSprite().animations.play('idle-machine-gun', 1, true);
 
+          // Stop the 'running on grass sound effect'
           if (sounds['run-on-grass'].isPlaying) {
             sounds['run-on-grass'].stop();
           }
         }
         else {
+          // If the player is not reloading, execute the running animation.
           if (!playerReloading) {
             player.getSprite().animations.play('run-machine-gun', 5, true);
             if (!sounds['run-on-grass'].isPlaying) {
@@ -398,13 +387,17 @@ StartServer.prototype = {
             }
           }
         }
+        // Updates the player info.
         player.update();
         socket.emit('player move', { playerName: player.getName(), posX: player.getX(), posY: player.getY(), bullets: player.getBullets(), rotation: player.getSprite().rotation});
         if (game.input.activePointer.leftButton.isDown) {
+          // If the player is shooting.
           if (!playerReloading) {
+            // timeFromLastShot is used for rate of fire.
             if (timeFromLastShot > 100) {
               if (player.getWeaponClip() == 0) {
                 if (player.getEquippedWeapon().ammo != 0) {
+                  // Reload the weapon if there is still ammo and the clip is empty.
                   holdingShoot = 0;
                   player.reloadWeapon();
                   sounds['machine-gun-reload'].play();
@@ -412,82 +405,104 @@ StartServer.prototype = {
                   player.getSprite().animations.play('reload-machine-gun', 15, false);
                 }
                 else {
+                  // If there is no ammo, play the 'no ammo' sound.
                   sounds['machine-gun-no-ammo'].play();
                 }
               }
               else {
+                // Emit the event telling that the player shot.
                 socket.emit('shoot gun', { server: $.jStorage.get('server'), mouseX: game.input.worldX, mouseY: game.input.worldY, speed: 500, type: 'machine gun', playerName: player.getName() });
+                // Decrease the ammo.
                 player.decreaseAmmo();
+                // Time the player is holding the shoot button. This is used to make the direction of the shots differ.
                 holdingShoot += game.time.elapsedMS;
                 timeFromLastShot = 0;
               }
             }
-            playerShot = true;
           }
         }
         else {
           timeSinceLastShot += game.time.elapsedMS;
           holdingShoot = 0;
         }
+        // Update the lamps. (light related).
         myLamp1.x = player.getX();
         myLamp1.y = player.getY();
         myLamp1.refresh();
       }
-      socket.emit('send players data', { playerID: player.getID() });
+      // Only ask for other players informations when the last request has been completed.
+      if (canAskAgain) {
+        // Sends the played id, so the server only sends info about the other players.
+        socket.emit('send players data', { playerID: player.getID() });
+      }
       //updateZombies();
+      // Prints the player's current hp.
       playerHP.text = "HP: " + player.getHP();
       //ammoInfo.text = holdingShoot;
+      // Prints the amount of bullets in the clip and the total of bullets.
       ammoInfo.text = player.getWeaponClip() + '/' + player.getEquippedWeapon().ammo;
       myMask.refresh();
     }
   },
   render: function() {
+    // Debug comments. I frequently need them so I just leave them commented.
+
     //game.debug.soundInfo(sounds['run-on-grass'], 0, 100);
     //game.debug.body(player.getSprite());
-    /*for (var i = 0; i < zombies.length; i++) {
-      game.debug.body(zombies[i].getSprite());
-    }*/
-    /*for (var i = 0; i < otherPlayers.length; i++) {
-      game.debug.body(otherPlayers[i].getSprite());
-    }*/
+    //for (var i = 0; i < zombies.length; i++) {
+    //  game.debug.body(zombies[i].getSprite());
+    //}
+    //for (var i = 0; i < otherPlayers.length; i++) {
+    //  game.debug.body(otherPlayers[i].getSprite());
+    //}
     //game.debug.cameraInfo(game.camera, 32, 32);
     //game.debug.body(player.getSprite());
   }
 }
 
+// Callback for the player killed event
 var playerKilled = function(data) {
   alert('Player: ' + data.playerName + ' is DEAD');
 }
 
+// Callback for when a is disconnected.
 var playerDisconnected = function(data) {
   for (var i = 0; i < otherPlayers.length; i++) {
     if (data.playerName == otherPlayers[i].getName()) {
+      // Kill the player sprite and the name.
       otherPlayers[i].getSprite().kill();
       otherPlayers[i].getNameObject().kill();
+      // Remove him from the otherPlayers array.
       otherPlayers.splice(i, 1);
       statusTime = 0;
+      // And sets the status message.
       statusMessage.text = "Player " + data.playerName + " has disconnected";
       break;
     }
   }
 }
 
+// Destroy the blood animation when a payeris hit.
 var destroyBloodAnimation = function(animation) {
   animation.kill();
 }
 
+// The reload animation has ended.
 var playerReloadAnimation = function() {
   playerReloading = false;
 }
 
+// When the game still had zombies.
 var updateZombies = function() {
   for (var i = 0; i < zombies.length; i++) {
     zombies[i].update();
   }
 }
 
+// This functions will create the zombies and make them follow a random online player.
 var spawnZombies = function(data) {
   for (var i = 0; i < data.coordinates.length; i++) {
+    // Zombies used to be just a white circle.
     /*var bmd2 = game.add.bitmapData(30, 30);
     bmd2.ctx.beginPath();
     bmd2.ctx.fillStyle = '#ffffff';
@@ -525,11 +540,9 @@ var spawnZombies = function(data) {
   zombieSprites.forEach(function(currentZombie) {
     currentZombie.animations.play('walk', 10, true);
   }, this);
-  /*console.log(data);
-  console.log(zombies);
-  console.log(zombieSprites);*/
 }
 
+// Bullet collides with player.
 var bulletCollidePlayers = function(bullet, hitPlayer) { 
   var bulletIndex = 0;
   for (var i = 0; i < bullets.length; i++) {
@@ -539,25 +552,32 @@ var bulletCollidePlayers = function(bullet, hitPlayer) {
   }
   if (player.getSprite() == hitPlayer) {
     if (bullets[bulletIndex] !== undefined) {
+      // There are some cases where the player collide with it's on bullet.
       if (bullets[bulletIndex].getOwner().getName() != player.getName()) {
+        // If it's an enemy bullet.
+        // Create the blood sprite, add the animations and position it.
         var blood = game.add.image(player.getX(), player.getY(), 'blood-splash');
         blood.anchor.setTo(1, 0.5);
         blood.rotation = bullets[bulletIndex].getOwner().getSprite().rotation;
         var animation = blood.animations.add('splash', false, false);
         animation.onComplete.add(destroyBloodAnimation, this);
         blood.animations.play('splash', 10, false);
+        // Reduce the player hp randomly. Different damages depending on weapon have not been implemented yet.
         player.setHP(player.getHP() - game.rnd.integerInRange(30, 50));
         if (player.getHP() <= 0) {
+          // If the player is dead, tell the server.
            socket.emit('player killed', { playerName: player.getName(), gun: 'machine-gun', killer: bullets[bulletIndex].getOwner().getName(), server: $.jStorage.get('server') } );
         }
       }
     }
   }
   else {
+    // If the current player was not hit. Another plaer was, instead,
     for (var i = 0; i < otherPlayers.length; i++) {
       if (otherPlayers[i].getSprite() == hitPlayer) {
         if (bullets[bulletIndex] !== undefined) {
           if (bullets[bulletIndex].getOwner().getName() != otherPlayers[i].getName()) {
+            // Same as the other case.
             var blood = game.add.image(otherPlayers[i].getX(), otherPlayers[i].getY(), 'blood-splash');
             blood.anchor.setTo(1, 0.5);
             blood.rotation = bullets[bulletIndex].getOwner().getSprite().rotation;
@@ -574,6 +594,7 @@ var bulletCollidePlayers = function(bullet, hitPlayer) {
       }
     }
   }
+  // Kills the bullet and remove the force applied to the body by the bullet.
   bullets.splice(bulletIndex, 1);
   bullet.kill();
   hitPlayer.body.velocity.x = 0;
@@ -585,6 +606,7 @@ var zombieCollideZombie = function(zombie, zombie) {
 
 }
 
+// Remove the bullet case it hits the world walls.
 var bulletCollideWalls = function(bullet, sprite) {
   bullets.splice(bullet.renderOrderID, 1);
   bullet.kill();
@@ -596,18 +618,22 @@ var processHandler = function(player, sprite) {
   return true;
 } 
 
+// Server sent a message to spawn a bullet. 
 var spawnNewBullet = function(data) {
-  //console.log(responseTime);
-  responseTime = 0;
+  // Play the sound
   sounds['machine-gun-shot'].play();
   for (var i = 0; i < otherPlayers.length; i++) {
     if (otherPlayers[i].getName() == data.owner) {
+      // Creates the bullet sprite in the bullet group.
       var bulletSprite = bulletsSprites.create(otherPlayers[i].getX(), otherPlayers[i].getY(), 'bullet');
       var bullet = new Bullet(otherPlayers[i].getX(), otherPlayers[i].getY(), bulletSprite, otherPlayers[i], game);
+      // Position it.
       bulletSprite.anchor.setTo(-8, -2.5);
       bulletSprite.rotation = otherPlayers[i].getSprite().rotation;
+      // Enables the physics for the bullet.
       game.physics.enable(bullet.getSprite(), Phaser.Physics.ARCADE);
       bullet.getSprite().body.collideWorldBounds = true;
+      // Accuracy depending on the time pressing the shoot button. There's 3 variations for the accuracy.
       if (holdingShoot > 100) {
         game.physics.arcade.moveToXY(bullet.getSprite(), data.mouseX + game.rnd.integerInRange(-100, 100), data.mouseY + game.rnd.integerInRange(-100, 100), 2000);
       } else if (holdingShoot > 150) {
@@ -622,10 +648,10 @@ var spawnNewBullet = function(data) {
       timeSinceLastShot = 0;
       var renderID = bullet.getSprite().renderOrderID;
       bullets[bullet.getSprite().renderOrderID] = bullet;
-      bulletID++;
     }
   }
   if (player.getName() == data.owner) {
+    // There's 2 ifs because the player is not in the same array as the other players, but the logic is the same.
     var bulletSprite = bulletsSprites.create(player.getX(), player.getY(), 'bullet');
     var bullet = new Bullet(player.getX(), player.getY(), bulletSprite, player, game);
     bulletSprite.anchor.setTo(-8, -2.5);
@@ -646,32 +672,26 @@ var spawnNewBullet = function(data) {
     timeSinceLastShot = 0;
     var renderID = bullet.getSprite().renderOrderID
     bullets[bullet.getSprite().renderOrderID] = bullet;
-    bulletID++;
   }
 }
 
+// A player has joined the server. Create it's sprite and position it. There's no other players animation yet.
 var playerJoined = function(data) {
-  /*var bmd2 = game.add.bitmapData(100, 100);
-  bmd2.ctx.beginPath();
-  bmd2.ctx.fillStyle = data.color;
-  bmd2.circle(50, 50, 15);
-  bmd2.ctx.fill();*/
-
   var newPlayer = new Player(data.posX, data.posY, data.hp, null, data.playerName, data.color, '', game);
   newPlayer.setSprite(playerSprites.create(0, 0, 'player-machine-gun'));
-  //newPlayer.getSprite().body.mass = 9999999;
   console.log('Player name: ' + newPlayer.getName() + ' Player HP: ' + newPlayer.getHP());
-  //newPlayer.setSprite(game.add.sprite(0, 0, bmd2));
 
   newPlayer.getSprite().anchor.setTo(0.2, 0.5);
 
   otherPlayers.push(newPlayer);
 }
 
+// Gets data from other players. This is sent by the server whenever the player asks, on every update.
 var otherPlayersData = function(data) {
   for (var i = 0; i < data.length; i++) {
     for (var o = 0; o < otherPlayers.length; o++) {
       if (otherPlayers[o].getName() == data[i].playerName) {
+        // Position and rotate the other players sprites.
         otherPlayers[o].setPosition(data[i].posX, data[i].posY);
         otherPlayers[o].getSprite().rotation = data[i].rotation;
         otherPlayers[o].update();
@@ -680,38 +700,14 @@ var otherPlayersData = function(data) {
   }
 }
 
-var setSpriteAnimations = function(playerToApply) {
-  /*playerToApply.getSprite().animations.add('standLeft', [6], 20);
-  playerToApply.getSprite().animations.add('standUp', [0], 20);
-  playerToApply.getSprite().animations.add('standRight', [3], 20);
-  playerToApply.getSprite().animations.add('standDown', [9], 20);
-  playerToApply.getSprite().animations.add('walkLeft', [7, 8], 5, false).onComplete.add(function(sprite, animation) {
-    animation.stop();
-    playerMoving = false;
-    playerToApply.getSprite().play('standLeft');
-  }, this);
-  playerToApply.getSprite().animations.add('walkRight', [4, 5], 5, false).onComplete.add(function(sprite, animation) {
-    animation.stop();
-    playerMoving = false;
-    playerToApply.getSprite().play('standRight');
-  }, this);
-  playerToApply.getSprite().animations.add('walkDown', [10, 11], 5, false).onComplete.add(function(sprite, animation) {
-    animation.stop();
-    playerMoving = false;
-    playerToApply.getSprite().play('standDown');
-  }, this);
-  playerToApply.getSprite().animations.add('walkUp', [1, 2], 5, false).onComplete.add(function(sprite, animation) {
-    animation.stop();
-    playerMoving = false;
-    playerToApply.getSprite().play('standUp');
-  }, this);*/
-}
-
+// Phaser will use #app-container to render the game.
 game = new Phaser.Game(serveWidth / 1.5, serveHeight / 1.08, Phaser.AUTO, 'app-container');
 gameWidth = serveWidth / 1.5;
 gameHeight = serveHeight / 1.08;
+// StartServer State.
 game.state.add('StartServer', StartServer);
 
+// Initial information for the creation and positioning of the player.
 socket.on('login initial information', function(data) {
   console.log(data);
   player = new Player(data.posX, data.posY, data.hp, null, $.jStorage.get('playerName'), data.color ,$.jStorage.get('playerID'), game);
