@@ -1,32 +1,9 @@
-var Floor = function(xCoord, yCoord, sprite, passable) {
-  this.x = xCoord;              // X Coordinates
-  this.y = yCoord;              // Y Coordinates
-  this.passable = passable;     // If the floor is passable
-  this.sprite = sprite;         // The tile sprite
-  this.itemList = new Array();  // The item list
+var DEFAULT_FLOOR_SIZE = {"w": 60, "h": 48}
 
-  this.getX = function() {
-    return this.x;
-  }
-
-  this.getY = function() {
-    return this.y;
-  }
-
-  this.setX = function(x) {
-    this.x = x;
-  }
-
-  this.setY = function(y) {
-    this.y = y;
-  }
-
-  this.isPassable = function() {
-    return this.passable;
-  }
-
-  this.getSprite = function() {
-    return this.sprite;
-  }
+var Floor = function(position, sprite) {
+  // Call parent class constructor
+  GameObject.call(this, position, sprite, true, DEFAULT_FLOOR_SIZE, true, false);
 }
 
+// Floor inherit from GameObject
+Floor.prototype = Object.create(GameObject.prototype);
